@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Digital-Money-Purse </title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { fontFamily: { sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'] } } } };
+</script>
+<style>
+  :root {
+    --bg: #090b12; --ink: #e8eaf2; --muted: #8b91a7; --accent: #8f9bff;
+    --income: #62d6a6; --expense: #ff8f80; --warn: #f3c969;
+  }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; overscroll-behavior: none; }
+  .aurora { position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background:
+      radial-gradient(42rem 30rem at 12% -8%, rgba(143,155,255,.20), transparent 60%),
+      radial-gradient(36rem 28rem at 105% 18%, rgba(98,214,166,.10), transparent 60%),
+      radial-gradient(40rem 30rem at 50% 115%, rgba(255,143,128,.10), transparent 60%); }
+  .glass { background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.08);
+    -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+  .glass-strong { background: rgba(18,21,32,.78); border: 1px solid rgba(255,255,255,.10);
+    -webkit-backdrop-filter: blur(24px) saturate(150%); backdrop-filter: blur(24px) saturate(150%); }
+  .num { font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+  .field { width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); border-radius: .75rem;
+    padding: .65rem .8rem; font-size: .9rem; color: var(--ink); outline: none; transition: border-color .15s, background .15s; }
+  .field:focus { border-color: rgba(143,155,255,.7); background: rgba(255,255,255,.07); }
+  .field option { background: #12151f; color: var(--ink); }
+  .chip { border: 1px solid rgba(143,155,255,.35); background: rgba(143,155,255,.10); color: #cfd5ff;
+    border-radius: 999px; padding: .3rem .8rem; font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .15s, transform .1s; }
+  .chip:hover { background: rgba(143,155,255,.2); } .chip:active { transform: scale(.97); }
+  .receipt { position: relative; border-radius: 1rem; background: rgba(255,255,255,.055); border: 1px solid rgba(255,255,255,.09); }
+  .receipt .perf { border-top: 1.5px dashed rgba(255,255,255,.14); margin: .75rem -1rem; }
+  .dots span { display:inline-block; width:6px; height:6px; margin:0 2px; border-radius:50%; background: var(--muted); animation: blink 1.2s infinite both; }
+  .dots span:nth-child(2){ animation-delay:.15s } .dots span:nth-child(3){ animation-delay:.3s }
+  @keyframes blink { 0%,80%,100%{ opacity:.25 } 40%{ opacity:1 } }
+  .pop { animation: pop .22s ease-out both; }
+  @keyframes pop { from { opacity:0; transform: translateY(6px) scale(.98) } to { opacity:1; transform:none } }
+  .skeleton { background: linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.09), rgba(255,255,255,.04)); background-size: 200% 100%; animation: sh 1.4s infinite; border-radius: .75rem; }
+  @keyframes sh { from { background-position: 200% 0 } to { background-position: -200% 0 } }
+  ::-webkit-scrollbar { width: 8px; height: 8px } ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); border-radius: 8px }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .pop, .dots span, .skeleton { animation: none !important; } }
+  .pb { padding-bottom: env(safe-area-inset-bottom); } .pt { padding-top: env(safe-area-inset-top); }
+
+/* Mobile responsiveness only — existing markup, functionality and data logic are unchanged. */
+@media (max-width: 640px) {
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+  body { min-width: 320px; }
+
+  /* Keep the brand, view tabs and sync control on one compact header row. */
+  header > div {
+    gap: .5rem !important;
+    padding-left: .75rem !important;
+    padding-right: .75rem !important;
+  }
+  header [role="tablist"] { flex: 0 1 auto; min-width: 0; }
+  header [role="tab"] {
+    padding: .4rem .55rem !important;
+    font-size: .72rem !important;
+    white-space: nowrap;
+  }
+  header #btnSync { flex: 0 0 2.25rem; }
+
+  /* Chat: reserve usable width for messages and the composer. */
+  #chatScroll { overscroll-behavior: contain; }
+  #chatLog { padding: 1rem .75rem !important; }
+  #chatLog > div { min-width: 0; }
+  #chatLog .glass, #chatLog .receipt {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  #chatLog .chip { max-width: 100%; white-space: normal; }
+  #view-chat > .pb { padding-left: .75rem !important; padding-right: .75rem !important; }
+  #chatForm { min-width: 0; gap: .4rem; }
+  #chatInput { min-width: 0; font-size: 16px; }
+
+  /* Dashboard filters become a compact two-column layout. */
+  #view-dash > div { padding: 1rem .75rem 7rem !important; }
+  #view-dash > div > .glass:first-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+    gap: .65rem;
+    padding: .85rem;
+  }
+  #view-dash > div > .glass:first-child label {
+    min-width: 0 !important;
+    width: 100%;
+  }
+  #view-dash .field { min-width: 0; width: 100%; font-size: 16px; }
+  #dashBody { min-width: 0; }
+  #dashBody > .grid:first-child,
+  #dashBody > .grid:nth-child(2) {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  #dashBody .glass { min-width: 0; }
+  #dashBody .num { overflow-wrap: anywhere; }
+  #dashBody li { min-width: 0; }
+  #dashBody li > div { min-width: 0; }
+  #dashBody li > div:last-child { flex: 0 0 auto; }
+
+  /* Manual-entry sheet: retain all fields while fitting narrow screens. */
+  #modal { padding-left: 0; padding-right: 0; }
+  #modal > .glass-strong {
+    width: 100%;
+    max-width: 100%;
+    max-height: 90dvh;
+    padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+  #mForm .grid { min-width: 0; }
+  #mForm label { min-width: 0; }
+  #mForm .field { min-width: 0; width: 100%; font-size: 16px; }
+  #mTypes button { min-width: 0; padding-left: .25rem; padding-right: .25rem; font-size: .78rem; }
+
+  #fab { right: .85rem; }
+  #toast { max-width: calc(100vw - 1.5rem); }
+  #toast > div { max-width: 100%; text-align: center; overflow-wrap: anywhere; }
+}
+
+@media (max-width: 360px) {
+  header > div { gap: .35rem !important; }
+  header > div > div:first-child { gap: .35rem !important; }
+  header [role="tab"] { padding-left: .42rem !important; padding-right: .42rem !important; }
+  #view-dash > div > .glass:first-child { gap: .5rem; padding: .7rem; }
+  #modal > .glass-strong { padding-left: .85rem; padding-right: .85rem; }
+}
+
+@media (min-width: 641px) and (max-width: 767px) {
+  #dashBody > .grid:nth-child(2) { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+</style>
+</head>
+<body class="h-[100dvh] overflow-hidden antialiased">
+<div class="aurora" aria-hidden="true"></div>
+
+<div class="relative z-10 flex h-full flex-col">
+  <!-- Header -->
+  <header class="pt shrink-0 border-b border-white/5">
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+      <div class="flex items-center gap-2.5">
+        <div class="grid h-8 w-8 place-items-center rounded-xl bg-[#8f9bff]/15 text-[#aab4ff]">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-5 4 4 7-8"/><path d="M15 8h5v5"/></svg>
+        </div>
+        <span class="text-[15px] font-extrabold tracking-tight">DMP<span class="font-semibold text-[var(--muted)]">AI</span></span>
+      </div>
+      <div role="tablist" aria-label="Views" class="glass flex rounded-full p-1 text-sm font-semibold">
+        <button id="tab-chat" role="tab" aria-selected="true" class="rounded-full px-4 py-1.5 transition">Assistant</button>
+        <button id="tab-dash" role="tab" aria-selected="false" class="rounded-full px-4 py-1.5 transition">Dashboard</button>
+      </div>
+      <button id="btnSync" title="Reload from sheet" aria-label="Reload from sheet" class="glass grid h-9 w-9 place-items-center rounded-full text-[var(--muted)] hover:text-white transition">
+        <svg id="syncIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="min-h-0 flex-1">
+    <!-- Chat -->
+    <section id="view-chat" class="flex h-full flex-col">
+      <div id="chatScroll" class="min-h-0 flex-1 overflow-y-auto">
+        <div id="chatLog" class="mx-auto max-w-2xl space-y-4 px-4 py-6" aria-live="polite"></div>
+      </div>
+      <div class="pb shrink-0 px-4 pb-4 pt-2">
+        <form id="chatForm" class="glass-strong mx-auto flex max-w-2xl items-center gap-2 rounded-2xl p-2 pl-4">
+          <input id="chatInput" class="min-w-0 flex-1 bg-transparent py-2 text-[15px] outline-none placeholder:text-[var(--muted)]" placeholder="Type an expense, income or transfer…" autocomplete="off" enterkeyhint="send" aria-label="Message">
+          <button id="chatSend" class="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#8f9bff] text-[#0b0d16] transition hover:brightness-110 disabled:opacity-40" aria-label="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Dashboard -->
+    <section id="view-dash" class="hidden h-full overflow-y-auto">
+      <div class="mx-auto max-w-5xl space-y-5 px-4 py-6 pb-32">
+        <div class="glass flex flex-wrap items-end gap-3 rounded-2xl p-4">
+          <label class="min-w-[9rem] flex-1 text-xs font-semibold text-[var(--muted)]">Period
+            <select id="fPreset" class="field mt-1">
+              <option value="month">This month</option><option value="lastmonth">Last month</option>
+              <option value="7d">Last 7 days</option><option value="year">This year</option>
+              <option value="all">All time</option><option value="custom">Custom range</option>
+            </select></label>
+          <label class="min-w-[8.5rem] flex-1 text-xs font-semibold text-[var(--muted)]">From
+            <input id="fFrom" type="date" class="field mt-1"></label>
+          <label class="min-w-[8.5rem] flex-1 text-xs font-semibold text-[var(--muted)]">To
+            <input id="fTo" type="date" class="field mt-1"></label>
+          <label class="min-w-[9rem] flex-1 text-xs font-semibold text-[var(--muted)]">Payment mode
+            <select id="fMode" class="field mt-1"><option value="">All modes</option></select></label>
+        </div>
+
+        <div id="dashBody" class="space-y-5"></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- FAB -->
+<button id="fab" class="fixed right-5 z-40 grid h-14 w-14 place-items-center rounded-2xl bg-[#8f9bff] text-[#0b0d16] shadow-[0_10px_30px_rgba(143,155,255,.35)] transition hover:brightness-110 active:scale-95" style="bottom: calc(env(safe-area-inset-bottom) + 5.5rem)" aria-label="Add entry manually">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+</button>
+
+<!-- Manual entry modal -->
+<div id="modal" class="fixed inset-0 z-50 hidden items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="glass-strong pop max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl p-5 sm:rounded-3xl">
+    <div class="mb-4 flex items-center justify-between">
+      <h2 id="mTitle" class="text-lg font-bold">New entry</h2>
+      <button id="mClose" class="grid h-8 w-8 place-items-center rounded-full text-[var(--muted)] hover:bg-white/10" aria-label="Close">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div id="mTypes" class="mb-4 grid grid-cols-3 gap-1 rounded-xl bg-white/5 p-1 text-sm font-semibold" role="tablist"></div>
+    <form id="mForm" class="space-y-3" novalidate>
+      <div class="grid grid-cols-2 gap-3">
+        <label class="text-xs font-semibold text-[var(--muted)]">Amount
+          <input id="mAmount" class="field num mt-1" inputmode="decimal" placeholder="0.00" autocomplete="off"></label>
+        <label class="text-xs font-semibold text-[var(--muted)]">Date
+          <input id="mDate" type="date" class="field mt-1"></label>
+      </div>
+      <div id="mCatWrap" class="grid grid-cols-2 gap-3">
+        <label class="text-xs font-semibold text-[var(--muted)]">Category
+          <select id="mCat" class="field mt-1"></select></label>
+        <label class="text-xs font-semibold text-[var(--muted)]">Subcategory
+          <select id="mSub" class="field mt-1"></select></label>
+      </div>
+      <label id="mModeWrap" class="block text-xs font-semibold text-[var(--muted)]"><span id="mModeLabel">Payment mode</span>
+        <select id="mMode" class="field mt-1"></select></label>
+      <div id="mTransferWrap" class="hidden grid-cols-2 gap-3">
+        <label class="text-xs font-semibold text-[var(--muted)]">Payment From
+          <select id="mFrom" class="field mt-1"></select></label>
+        <label class="text-xs font-semibold text-[var(--muted)]">Payment To
+          <select id="mTo" class="field mt-1"></select></label>
+      </div>
+      <label class="block text-xs font-semibold text-[var(--muted)]">Note
+        <input id="mNote" class="field mt-1" placeholder="Optional" autocomplete="off"></label>
+      <p id="mError" class="hidden rounded-lg bg-[#ff8f80]/10 px-3 py-2 text-sm text-[#ffb3a8]" role="alert"></p>
+      <button id="mSave" class="w-full rounded-xl bg-[#8f9bff] py-3 text-sm font-bold text-[#0b0d16] transition hover:brightness-110 disabled:opacity-50">Save entry</button>
+    </form>
+  </div>
+</div>
+
+<div id="toast" class="pointer-events-none fixed left-1/2 top-4 z-[60] -translate-x-1/2 opacity-0 transition-opacity"></div>
+
+<script>
+const API_URL = 'https://script.google.com/macros/s/AKfycbzPqC2u_n7c8v57p8kMQziEozM2XAI7cOLntwlNJ0Uc9lekf3IN5a5VIZBtTPDKb2Y8/exec';
+
+function callApi(action, payload) {
+  const req = Object.assign({ action }, payload || {});
+  if (window.google && google.script && google.script.run) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(r => { try { resolve(typeof r === 'string' ? JSON.parse(r) : r); } catch (e) { reject(e); } })
+        .withFailureHandler(e => reject(new Error((e && e.message) || String(e))))
+        .api(JSON.stringify(req));
+    });
+  }
+  if (!API_URL) return Promise.reject(new Error('Set API_URL at the top of the script to your Apps Script Web App URL.'));
+  return fetch(API_URL, { method: 'POST', body: JSON.stringify(req), headers: { 'Content-Type': 'text/plain;charset=utf-8' } }).then(async r => {
+    const text = await r.text();
+    try { return JSON.parse(text); } catch (e) { throw new Error('Invalid JSON: ' + text); }
+  });
+}
+
+// ==PARSER-START==
+const norm = s => String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+const pad2 = n => String(n).padStart(2, '0');
+const STOP = new Set(['for','on','at','to','from','the','a','an','of','in','via','using','by','with','my','through','thru','and','is','was','rs','inr','rupees','rupee','into','as','me','i','it','please','pls','add','log','record','entry','amount','amt','money','payment','mode','paying','pay','using']);
+const GENERIC = new Set(['other','others','misc','miscellaneous','general']);
+const MODE_CUE = new Set(['via','using','by','through','thru','in','with','from','to','into','paid','pay','on']);
+const TYPE_WORDS = {
+  expense:  ['expense','expenses','expence','spent','spend','spending','paid','bought','buy','purchase','purchased','cost','exp'],
+  income:   ['income','incomes','earned','earn','earning','received','recieved','receive','credited','got'],
+  transfer: ['transfer','transfers','transferred','transfered','tranfer','moved','move','shifted','shift','xfer']
+};
+
+function lev(a, b) {
+  if (a === b) return 0;
+  const m = a.length, n = b.length;
+  if (!m) return n; if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, j) => j), cur = new Array(n + 1);
+  for (let i = 1; i <= m; i++) {
+    cur[0] = i;
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    [prev, cur] = [cur, prev];
+  }
+  return prev[n];
+}
+function phraseScore(g, p) {
+  if (!g || !p) return 0;
+  if (g === p) return 1;
+  if (g.replace(/s$/, '') === p.replace(/s$/, '')) return .95;
+  const L = Math.max(g.length, p.length), m = Math.min(g.length, p.length);
+  if (m >= 4) { const d = lev(g, p); if (d <= (L >= 7 ? 2 : 1)) return .8 - .05 * d; }
+  if (g.length >= 3 && p.length > g.length && p.startsWith(g) && g.indexOf(' ') < 0) return .65;
+  return 0;
+}
+function typeScore(g, w) {
+  if (g === w) return 1;
+  const L = Math.max(g.length, w.length);
+  if (Math.min(g.length, w.length) >= 4 && lev(g, w) <= (L >= 8 ? 2 : 1)) return .75;
+  return 0;
+}
+
+function buildIndex(meta) {
+  const al = meta.aliases || [];
+  const aliasOf = (kind, name, type) => {
+    const out = [];
+    al.forEach(a => {
+      if (String(a.kind).indexOf(kind) === 0 && norm(a.name) === norm(name) && (!a.type || !type || a.type === type)) a.aliases.forEach(x => out.push(norm(x)));
+    });
+    return out.filter(Boolean);
+  };
+  const mk = (type, cat, sub, primary, extra) => {
+    const words = primary.split(' ').filter(w => w.length >= 3 && !STOP.has(w));
+    return { type, cat, sub, phrases: [primary].concat(extra), words: primary.indexOf(' ') >= 0 ? words : [],
+             generic: primary.split(' ').every(w => GENERIC.has(w)) };
+  };
+  const idx = { modes: [], cats: [] };
+  (meta.modes || []).forEach(m => idx.modes.push({ name: m, phrases: [norm(m)].concat(aliasOf('mode', m)), generic: GENERIC.has(norm(m)) }));
+  ['expense', 'income'].forEach(type => {
+    (meta[type] || []).forEach(c => {
+      idx.cats.push(mk(type, c.name, '', norm(c.name), aliasOf('cat', c.name, type)));
+      (c.subs || []).forEach(s => idx.cats.push(mk(type, c.name, s, norm(s), aliasOf('sub', s, type))));
+    });
+  });
+  return idx;
+}
+
+function addDays(iso, n) {
+  const [y, m, d] = iso.split('-').map(Number), dt = new Date(Date.UTC(y, m - 1, d + n));
+  return dt.getUTCFullYear() + '-' + pad2(dt.getUTCMonth() + 1) + '-' + pad2(dt.getUTCDate());
+}
+function validIso(y, m, d) {
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d ? y + '-' + pad2(m) + '-' + pad2(d) : null;
+}
+function extractDate(s, today) {
+  const MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+  const WD = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+  const ty = +today.slice(0, 4);
+  let m, iso;
+  const done = (iso, re) => ({ iso, found: true, rest: s.replace(re, ' ') });
+  if ((m = s.match(/\bday before yesterday\b/))) return done(addDays(today, -2), m[0]);
+  if ((m = s.match(/\b(yesterday|yesterdy|yesturday|ystday)\b/))) return done(addDays(today, -1), m[0]);
+  if ((m = s.match(/\b(\d{1,3})\s*days?\s*ago\b/))) return done(addDays(today, -(+m[1])), m[0]);
+  if ((m = s.match(/\btoday\b/))) return done(today, m[0]);
+  if ((m = s.match(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/)) && (iso = validIso(+m[1], +m[2], +m[3]))) return done(iso, m[0]);
+  if ((m = s.match(/\b(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{2,4}))?\b/))) {
+    let y = m[3] ? +m[3] : ty; if (y < 100) y += 2000;
+    if ((iso = validIso(y, +m[2], +m[1]))) return done(iso, m[0]);
+  }
+  if ((m = s.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*(?:\s+(\d{4}))?\b/)) && (iso = validIso(m[3] ? +m[3] : ty, MONTHS[m[2]], +m[1]))) return done(iso, m[0]);
+  if ((m = s.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:st|nd|rd|th)?(?:\s+(\d{4}))?\b/)) && (iso = validIso(m[3] ? +m[3] : ty, MONTHS[m[1]], +m[2]))) return done(iso, m[0]);
+  if ((m = s.match(/\b(?:last\s+|on\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/))) {
+    const [y, mo, d] = today.split('-').map(Number), cur = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+    let diff = (cur - WD.indexOf(m[1]) + 7) % 7; if (diff === 0 && /last/.test(m[0])) diff = 7;
+    return done(addDays(today, -diff), m[0]);
+  }
+  return { iso: today, found: false, rest: s };
+}
+
+function extractAmount(s) {
+  const re = /(?:₹|rs\.?|inr)?\s*(\d{1,3}(?:,\d{2,3})+(?:\.\d+)?|\d+(?:\.\d+)?)\s*(k|lakhs?|lacs?|l)?(?:\s*(rs\.?|inr|rupees?|₹))?/gi;
+  let m, best = null;
+  while ((m = re.exec(s))) {
+    let v = parseFloat(m[1].replace(/,/g, ''));
+    const mult = (m[2] || '').toLowerCase();
+    if (mult === 'k') v *= 1e3; else if (mult) v *= 1e5;
+    if (!(v > 0)) continue;
+    const before = s.slice(0, m.index).trim().split(/\s+/).pop() || '';
+    let score = (m[3] ? 3 : 0) + (/^(for|of|is|rs|inr|₹)$/.test(before) ? 1 : 0);
+    if (!best || score > best.score) best = { v, score, text: m[0], index: m.index };
+  }
+  if (!best) return { amount: 0, rest: s };
+  return { amount: best.v, rest: s.slice(0, best.index) + ' ' + s.slice(best.index + best.text.length) };
+}
+
+function candidates(tokens, idx, opts) {
+  const out = [], N = tokens.length;
+  for (let i = 0; i < N; i++) {
+    for (let n = 1; n <= 3 && i + n <= N; n++) {
+      const seg = tokens.slice(i, i + n);
+      if (STOP.has(seg[0]) || STOP.has(seg[n - 1])) continue;
+      const g = seg.join(' ');
+      if (n === 1) {
+        for (const t in TYPE_WORDS) {
+          let s = 0; TYPE_WORDS[t].forEach(w => { s = Math.max(s, typeScore(g, w)); });
+          if (s) out.push({ kind: 'type', type: t, score: s, i, n });
+        }
+      }
+      for (const m of idx.modes) {
+        let s = 0; m.phrases.forEach(p => { s = Math.max(s, phraseScore(g, p)); });
+        if (s < .6) continue;
+        if (m.generic && !opts.reply && !MODE_CUE.has(tokens[i - 1] || '')) continue;
+        out.push({ kind: 'mode', name: m.name, score: s, i, n });
+      }
+      if (opts.modesOnly) continue;
+      for (const e of idx.cats) {
+        if (opts.catType && e.type !== opts.catType) continue;
+        let s = 0; e.phrases.forEach(p => { s = Math.max(s, phraseScore(g, p)); });
+        if (n === 1 && e.words.length) e.words.forEach(w => { const ws = phraseScore(g, w); if (ws >= .95) s = Math.max(s, ws * .88); });
+        if (e.generic) s *= .6;
+        if (s < .59) continue;
+        out.push({ kind: 'cat', ent: e, score: s, i, n });
+      }
+    }
+  }
+  return out;
+}
+function selectBest(c) {
+  const prio = x => (x.kind === 'cat' && x.ent.type === 'income') ? 1 : 0;
+  c.sort((a, b) => b.score - a.score || b.n - a.n || prio(a) - prio(b) || a.i - b.i);
+  const used = new Set(), chosen = [];
+  for (const x of c) {
+    let clash = false;
+    for (let k = x.i; k < x.i + x.n; k++) if (used.has(k)) { clash = true; break; }
+    if (clash) continue;
+    if (x.kind === 'mode' && chosen.some(y => y.kind === 'mode' && y.name === x.name)) continue;
+    chosen.push(x);
+    for (let k = x.i; k < x.i + x.n; k++) used.add(k);
+  }
+  return { chosen, used };
+}
+const titleCase = s => s.replace(/\b[a-z]/g, c => c.toUpperCase());
+
+function parseMessage(text, meta, today, opts) {
+  opts = opts || {};
+  const idx = meta._idx || (meta._idx = buildIndex(meta));
+  let s = String(text || '').toLowerCase();
+  const dt = extractDate(s, today); s = dt.rest;
+  const am = extractAmount(s); s = am.rest;
+  const tokens = norm(s).split(' ').filter(Boolean);
+
+  let sel = selectBest(candidates(tokens, idx, opts));
+  let typeHit = sel.chosen.filter(x => x.kind === 'type').sort((a, b) => a.i - b.i)[0];
+  if (typeHit && typeHit.type !== 'transfer') {
+    sel = selectBest(candidates(tokens, idx, Object.assign({}, opts, { catType: typeHit.type })));
+    typeHit = sel.chosen.filter(x => x.kind === 'type').sort((a, b) => a.i - b.i)[0] || typeHit;
+  }
+  const modeHits = sel.chosen.filter(x => x.kind === 'mode').sort((a, b) => a.i - b.i)
+    .map(x => ({ name: x.name, role: tokens[x.i - 1] === 'from' ? 'from' : (tokens[x.i - 1] === 'to' || tokens[x.i - 1] === 'into') ? 'to' : null }));
+  const catHit = sel.chosen.filter(x => x.kind === 'cat').sort((a, b) => b.score - a.score || a.i - b.i)[0];
+
+  let type = typeHit ? typeHit.type : null;
+  if (!type) type = (modeHits.length >= 2 && !catHit) ? 'transfer' : (catHit ? catHit.ent.type : 'expense');
+
+  const leftoverTokens = tokens.filter((t, i) => !sel.used.has(i) && !STOP.has(t));
+  const leftover = leftoverTokens.join(' ');
+  const draft = { type, amount: am.amount, date: dt.iso, dateFound: dt.found, explicitType: typeHit ? typeHit.type : null,
+                  modes: modeHits, leftover, message: String(text || '').trim(), category: '', subcategory: '', description: '',
+                  mode: '', from: '', to: '', notes: '', usedFallback: false, matched: !!catHit, askedNote: false };
+
+  if (type === 'transfer') {
+    let f = '', t = '';
+    if (modeHits.length >= 2) {
+      let [a, b] = modeHits;
+      if (a.role === 'to' || b.role === 'from') [a, b] = [b, a];
+      f = a.name; t = b.name;
+    } else if (modeHits.length === 1) {
+      if (modeHits[0].role === 'to') t = modeHits[0].name; else f = modeHits[0].name;
+    }
+    draft.from = f; draft.to = t;
+    draft.notes = leftover ? titleCase(leftover) : '';
+    if (draft.notes) draft.askedNote = true;
+  } else {
+    draft.mode = modeHits.length ? modeHits[0].name : '';
+    if (catHit && catHit.ent.type === type) {
+      draft.category = catHit.ent.cat; draft.subcategory = catHit.ent.sub;
+      draft.description = leftover ? titleCase(leftover) : '';
+    } else {
+      draft.category = (meta.fallback && meta.fallback[type]) || 'Others';
+      draft.subcategory = leftover ? titleCase(leftover) : '';
+      draft.usedFallback = true;
+    }
+  }
+  return draft;
+}
+// ==PARSER-END==
+
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let META = null, metaAt = 0, pending = null, busy = false;
+const MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const money = n => (META ? META.currency : '₹') + Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2, minimumFractionDigits: Number(n) % 1 ? 2 : 0 });
+const prettyDate = iso => { const p = String(iso).split('-'); return p.length === 3 ? (+p[2]) + ' ' + MONTH_ABBR[+p[1] - 1] + ' ' + p[0] : iso; };
+const typeLabel = t => ({ expense: 'Expense', income: 'Income', transfer: 'Transfer' }[t] || t);
+
+async function loadMeta(force) {
+  if (!force && META && Date.now() - metaAt < 20000) return META;
+  const m = await callApi('get_meta');
+  if (!m.ok) throw new Error(m.error || 'Could not load metadata');
+  META = m; metaAt = Date.now();
+  fillModeFilter();
+  return META;
+}
+function toast(msg, kind) {
+  const t = $('#toast');
+  t.innerHTML = '<div class="glass-strong rounded-full px-4 py-2 text-sm font-semibold ' + (kind === 'err' ? 'text-[#ffb3a8]' : 'text-[#9fe8c8]') + '">' + esc(msg) + '</div>';
+  t.style.opacity = 1; clearTimeout(toast._t); toast._t = setTimeout(() => { t.style.opacity = 0; }, 2600);
+}
+
+const log = () => $('#chatLog');
+function scrollDown() { const s = $('#chatScroll'); requestAnimationFrame(() => { s.scrollTop = s.scrollHeight; }); }
+function addUser(text) {
+  const d = document.createElement('div'); d.className = 'pop flex justify-end';
+  d.innerHTML = '<div class="max-w-[85%] rounded-2xl rounded-br-md bg-[#8f9bff]/20 px-4 py-2.5 text-[15px] text-[#e4e8ff]">' + esc(text) + '</div>';
+  log().appendChild(d); scrollDown();
+}
+function addBot(html, chips) {
+  const d = document.createElement('div'); d.className = 'pop flex items-start gap-2.5';
+  d.innerHTML = '<div class="mt-1 h-6 w-6 shrink-0 rounded-lg bg-[#8f9bff]/15"></div>' +
+    '<div class="glass max-w-[88%] rounded-2xl rounded-tl-md px-4 py-3 text-[15px] leading-relaxed">' + html +
+    (chips && chips.length ? '<div class="mt-3 flex flex-wrap gap-2">' + chips.map(c => '<button type="button" class="chip" data-chip="' + esc(c) + '">' + esc(c) + '</button>').join('') + '</div>' : '') + '</div>';
+  log().appendChild(d); scrollDown(); return d;
+}
+function addReceipt(saved, id, row, via) {
+  const isT = saved.type === 'transfer';
+  const col = saved.type === 'income' ? 'var(--income)' : isT ? 'var(--accent)' : 'var(--expense)';
+  const sign = saved.type === 'income' ? '+' : isT ? '' : '−';
+  const line = isT ? esc(saved.from) + ' → ' + esc(saved.to) + (saved.notes ? ' · ' + esc(saved.notes) : '') : esc(saved.category) + (saved.subcategory ? ' › ' + esc(saved.subcategory) : '') + ' · ' + esc(saved.mode);
+  const note = saved.fallback ? '<p class="mt-2 text-xs text-[var(--warn)]">Not found in your sheet, so it was filed under “' + esc(saved.category) + '”.</p>' : '';
+  addBot('<div class="receipt px-4 pb-3 pt-3"><div class="flex items-baseline justify-between gap-6"><span class="text-sm font-semibold" style="color:' + col + '">' + typeLabel(saved.type) + ' saved</span>' +
+    '<span class="num text-xl font-extrabold">' + sign + money(saved.amount) + '</span></div><div class="perf"></div>' +
+    '<p class="text-sm">' + line + '</p><p class="mt-0.5 text-xs text-[var(--muted)]">' + prettyDate(saved.date) + (id ? ' · ' + esc(id) : '') + ' · row ' + row + (via ? ' · ' + via : '') + '</p>' + note + '</div>');
+}
+function showTyping() {
+  const d = document.createElement('div'); d.id = 'typing'; d.className = 'flex items-start gap-2.5';
+  d.innerHTML = '<div class="mt-1 h-6 w-6 shrink-0 rounded-lg bg-[#8f9bff]/15"></div><div class="glass rounded-2xl rounded-tl-md px-4 py-3"><span class="dots"><span></span><span></span><span></span></span></div>';
+  log().appendChild(d); scrollDown();
+}
+const hideTyping = () => { const t = $('#typing'); if (t) t.remove(); };
+
+function helpHtml() {
+  const sub = firstSub(), mode = META && META.modes[0];
+  let ex = '';
+  if (sub && mode) ex = '<p class="mt-2 text-[var(--muted)]">Try “<span class="text-white">' + esc('200 for ' + sub.toLowerCase() + ' ' + mode.toLowerCase()) + '</span>” or “<span class="text-white">' + esc('transfer 500 from cash to upi') + '</span>”.</p>';
+  return 'I can log expenses, income and transfers from a plain message. Words can come in any order, and small typos are fine.' + ex +
+    '<p class="mt-2 text-[var(--muted)]">Everything I recognise comes straight from your Google Sheet.</p>';
+}
+function firstSub() { const c = META && META.expense.find(x => x.subs.length); return c ? c.subs[0] : null; }
+
+async function handleUser(text) {
+  text = text.trim(); if (!text || busy) return;
+  busy = true; $('#chatSend').disabled = true;
+  addUser(text); showTyping();
+  try { await loadMeta(); hideTyping(); await respond(text); }
+  catch (e) { hideTyping(); addBot('<span class="text-[#ffb3a8]">' + esc(e.message || e) + '</span>'); }
+  finally { busy = false; $('#chatSend').disabled = false; $('#chatInput').focus(); }
+}
+
+async function respond(text) {
+  const lower = norm(text);
+  if (pending) {
+    if (/^(cancel|stop|never mind|nevermind|discard|forget it|no|nope)$/.test(lower)) { pending = null; addBot('Cancelled. Nothing was saved.'); return; }
+    const probe = parseMessage(text, META, META.today, { reply: true });
+    const looksNew = probe.amount && (probe.matched || probe.explicitType);
+    if (!looksNew) { applyAnswer(pending, text, probe); return continueDraft(); }
+    pending = null; addBot('Dropped the unfinished entry and started a new one.');
+  }
+  const d = parseMessage(text, META, META.today);
+  if (!d.amount && !d.explicitType && !d.matched) { addBot(helpHtml()); return; }
+  pending = { draft: d };
+  return continueDraft();
+}
+
+function missingOf(d) {
+  const miss = [];
+  if (!(d.amount > 0)) miss.push('amount');
+  if (d.type === 'transfer') {
+    if (!d.from) miss.push('from');
+    if (!d.to) miss.push('to');
+    if (d.from && d.to && !d.askedNote) miss.push('note');
+  } else if (!d.mode) {
+    miss.push('mode');
+  }
+  return miss;
+}
+function applyAnswer(p, text, probe) {
+  const d = p.draft, miss = missingOf(d)[0];
+  if (miss === 'amount') {
+    const a = extractAmount(text.toLowerCase()).amount;
+    if (a > 0) d.amount = a;
+  } else if (miss === 'mode') {
+    if (probe.modes.length) d.mode = probe.modes[0].name;
+  } else if (miss === 'from' || miss === 'to') {
+    const hits = probe.modes.map(m => m.name);
+    const needFrom = !d.from, needTo = !d.to;
+    if (needFrom && needTo) { if (hits[0]) d.from = hits[0]; if (hits[1]) d.to = hits[1]; }
+    else if (hits.length) { if (needFrom) d.from = hits[0]; else d.to = hits[0]; }
+  } else if (miss === 'note') {
+    d.askedNote = true;
+    if (!/^(skip|none|nil|na|n a)$/.test(norm(text))) {
+      d.notes = text.trim();
+    }
+  }
+}
+function draftLabel(d) {
+  if (d.type === 'transfer') return 'a transfer';
+  const l = d.category ? (d.subcategory ? d.category + ' › ' + d.subcategory : d.category) : (d.leftover || 'this');
+  return esc(l);
+}
+async function continueDraft() {
+  const d = pending.draft, miss = missingOf(d);
+  if (miss.length) {
+    const m = miss[0], modes = META.modes;
+    if (m === 'amount') addBot('How much was it' + (d.type === 'transfer' ? ' to transfer' : '') + '?');
+    else if (m === 'mode') addBot((d.amount ? '<strong class="num">' + money(d.amount) + '</strong> for ' + draftLabel(d) + '. ' : '') +
+      (d.type === 'income' ? 'Which income mode did it come in through?' : 'Which payment mode did you use?'), modes);
+    else if (m === 'from') addBot('Which payment mode are you transferring ' + (d.amount ? '<strong class="num">' + money(d.amount) + '</strong> ' : 'money ') + 'from?', modes.filter(x => x !== d.to));
+    else if (m === 'to') addBot('And which payment mode should it go to?', modes.filter(x => x !== d.from));
+    else if (m === 'note') addBot('Add a note for this transfer? (or tap Skip)', ['Skip']);
+    return;
+  }
+  if (d.type === 'transfer' && d.from === d.to) { d.to = ''; addBot('Payment From and Payment To must be different. Which mode should it go to?', META.modes.filter(x => x !== d.from)); return; }
+  showTyping();
+  try {
+    const r = await callApi('add_transaction', {
+      type: d.type, date: d.date, amount: d.amount, message: d.message, category: d.category, subcategory: d.subcategory,
+      description: d.description, mode: d.mode, from: d.from, to: d.to, notes: d.notes
+    });
+    hideTyping();
+    if (!r.ok) { addBot('<span class="text-[#ffb3a8]">Could not save: ' + esc(r.error) + '</span>'); if (/mode/i.test(r.error)) { d.mode = ''; d.from = ''; d.to = ''; } else pending = null; return; }
+    pending = null; addReceipt(r.saved, r.id, r.row); afterSave();
+  } catch (e) { hideTyping(); addBot('<span class="text-[#ffb3a8]">' + esc(e.message || e) + '</span>'); }
+}
+function afterSave() { metaAt = 0; if (!$('#view-dash').classList.contains('hidden')) loadDashboard(); }
+
+function fillModeFilter() {
+  const sel = $('#fMode'), cur = sel.value;
+  sel.innerHTML = '<option value="">All modes</option>' + META.modes.map(m => '<option>' + esc(m) + '</option>').join('');
+  if (META.modes.indexOf(cur) >= 0) sel.value = cur;
+}
+function presetRange(p) {
+  const t = META.today, y = +t.slice(0, 4), m = +t.slice(5, 7);
+  const last = (yy, mm) => new Date(Date.UTC(yy, mm, 0)).getUTCDate(), iso = (yy, mm, dd) => yy + '-' + pad2(mm) + '-' + pad2(dd);
+  if (p === 'month') return [iso(y, m, 1), iso(y, m, last(y, m))];
+  if (p === 'lastmonth') { const pm = m === 1 ? 12 : m - 1, py = m === 1 ? y - 1 : y; return [iso(py, pm, 1), iso(py, pm, last(py, pm))]; }
+  if (p === '7d') return [addDays(t, -6), t];
+  if (p === 'year') return [y + '-01-01', y + '-12-31'];
+  return ['', ''];
+}
+function skeleton() { return '<div class="grid gap-3 sm:grid-cols-3"><div class="skeleton h-28"></div><div class="skeleton h-28"></div><div class="skeleton h-28"></div></div><div class="skeleton h-64"></div><div class="skeleton h-72"></div>'; }
+let dashSeq = 0;
+async function loadDashboard() {
+  const seq = ++dashSeq, body = $('#dashBody'); body.innerHTML = skeleton();
+  try {
+    await loadMeta();
+    if (!$('#fFrom').dataset.init) { applyPreset(); $('#fFrom').dataset.init = 1; }
+    const r = await callApi('get_dashboard', { from: $('#fFrom').value, to: $('#fTo').value, mode: $('#fMode').value });
+    if (seq !== dashSeq) return;
+    if (!r.ok) throw new Error(r.error);
+    renderDashboard(r);
+  } catch (e) { if (seq === dashSeq) body.innerHTML = '<div class="glass rounded-2xl p-5 text-sm text-[#ffb3a8]">' + esc(e.message || e) + '</div>'; }
+}
+function applyPreset() {
+  const p = $('#fPreset').value; if (p === 'custom') return;
+  const [f, t] = presetRange(p); $('#fFrom').value = f; $('#fTo').value = t;
+}
+function renderDashboard(r) {
+  const T = r.totals, neg = T.net < 0;
+  const card = (label, val, color, sub) => '<div class="glass rounded-2xl p-5"><p class="text-sm font-semibold text-[var(--muted)]">' + label + '</p><p class="num mt-2 text-[1.75rem] font-extrabold leading-none" style="color:' + color + '">' + val + '</p>' + (sub ? '<p class="mt-2 text-xs text-[var(--muted)]">' + sub + '</p>' : '') + '</div>';
+  const statusColor = { Normal: 'var(--income)', Warning: 'var(--warn)', Exceeded: 'var(--expense)', 'Not Set': '#5b6178' };
+  const buds = (r.budgets || []).filter(b => b.limit > 0 || b.spent > 0);
+  const budHtml = buds.length ? buds.map(b => {
+    const w = Math.min(b.pct, 1) * 100, c = statusColor[b.status];
+    return '<div class="py-3"><div class="flex items-baseline justify-between gap-3"><span class="text-sm font-semibold">' + esc(b.category) + '</span>' +
+      '<span class="num text-sm"><span class="font-bold">' + money(b.spent) + '</span><span class="text-[var(--muted)]">' + (b.limit > 0 ? ' / ' + money(b.limit) : ' · no limit set') + '</span></span></div>' +
+      '<div class="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div class="h-full rounded-full" style="width:' + (b.limit > 0 ? w : 0) + '%;background:' + c + '"></div></div>' +
+      '<div class="mt-1.5 flex justify-between text-xs text-[var(--muted)]"><span style="color:' + c + '">' + esc(b.status) + (b.limit > 0 ? ' · ' + Math.round(b.pct * 100) + '%' : '') + '</span>' +
+      '<span class="num">' + (b.remaining === null ? '' : b.remaining >= 0 ? money(b.remaining) + ' left' : money(-b.remaining) + ' over') + '</span></div></div>';
+  }).join('') : '<p class="py-6 text-center text-sm text-[var(--muted)]">No budgets or spending in this period.</p>';
+  const rec = (r.recent || []).length ? r.recent.map(t => {
+    const col = t.type === 'income' ? 'var(--income)' : t.type === 'transfer' ? 'var(--accent)' : 'var(--expense)';
+    const sign = t.type === 'income' ? '+' : t.type === 'expense' ? '−' : '';
+    const sub = t.type === 'transfer' ? esc(t.mode) : esc(t.category) + (t.subcategory ? ' › ' + esc(t.subcategory) : '') + ' · ' + esc(t.mode);
+    return '<li class="flex items-center gap-3 py-3"><span class="h-8 w-1 shrink-0 rounded-full" style="background:' + col + '"></span>' +
+      '<div class="min-w-0 flex-1"><p class="truncate text-sm font-semibold">' + esc(t.message || t.category || typeLabel(t.type)) + '</p><p class="truncate text-xs text-[var(--muted)]">' + sub + '</p></div>' +
+      '<div class="text-right"><p class="num text-sm font-bold" style="color:' + col + '">' + sign + money(t.amount) + '</p><p class="text-xs text-[var(--muted)]">' + prettyDate(t.date) + '</p></div></li>';
+  }).join('') : '<li class="py-6 text-center text-sm text-[var(--muted)]">No transactions in this period.</li>';
+  $('#dashBody').innerHTML =
+    '<div class="grid gap-3 sm:grid-cols-3">' + card('Income', money(T.income).replace(/^/, '+'), 'var(--income)', r.counts.income + ' entries') +
+    card('Expenses', money(T.expense), 'var(--expense)', r.counts.expense + ' entries') +
+    card('Net', (neg ? '−' : '') + money(Math.abs(T.net)), neg ? 'var(--expense)' : 'var(--ink)', 'Transfers moved ' + money(T.transfers)) + '</div>' +
+    '<div class="grid gap-5 lg:grid-cols-5"><div class="glass rounded-2xl p-5 lg:col-span-3"><h3 class="font-bold">Budget by category</h3><div class="mt-1 divide-y divide-white/5">' + budHtml + '</div></div>' +
+    '<div class="glass rounded-2xl p-5 lg:col-span-2"><h3 class="font-bold">Recent transactions</h3><ul class="mt-1 divide-y divide-white/5">' + rec + '</ul></div></div>';
+}
+
+let mType = 'expense';
+function buildTypeTabs() {
+  $('#mTypes').innerHTML = ['expense', 'income', 'transfer'].map(t =>
+    '<button type="button" role="tab" data-t="' + t + '" class="rounded-lg py-2 transition ' + (t === mType ? 'bg-white/10 text-white' : 'text-[var(--muted)]') + '">' + typeLabel(t) + '</button>').join('');
+}
+function opts(list, withBlank) { return (withBlank ? '<option value="">—</option>' : '') + (list || []).map(x => '<option>' + esc(x) + '</option>').join(''); }
+function renderModal() {
+  buildTypeTabs();
+  if (!META) return;
+  const isT = mType === 'transfer';
+  $('#mCatWrap').classList.toggle('hidden', isT);
+  $('#mModeWrap').classList.toggle('hidden', isT);
+  $('#mTransferWrap').classList.toggle('hidden', !isT); $('#mTransferWrap').classList.toggle('grid', isT);
+  $('#mModeLabel').textContent = mType === 'income' ? 'Income mode' : 'Payment mode';
+  if (!isT) {
+    if (!META[mType]) return;
+    $('#mCat').innerHTML = opts((META[mType] || []).map(c => c.name));
+    fillSubs();
+    $('#mMode').innerHTML = opts(META.modes);
+  } else {
+    $('#mFrom').innerHTML = opts(META.modes);
+    $('#mTo').innerHTML = opts(META.modes);
+    if (META.modes.length > 1) $('#mTo').selectedIndex = 1;
+  }
+}
+function fillSubs() {
+  if (!META || !META[mType]) return;
+  const c = META[mType].find(x => x.name === $('#mCat').value);
+  $('#mSub').innerHTML = opts(c ? c.subs : [], true);
+}
+async function openModal() {
+  $('#mError').classList.add('hidden');
+  try { await loadMeta(); } catch (e) { toast(e.message, 'err'); return; }
+  $('#mDate').value = META.today; $('#mAmount').value = ''; $('#mNote').value = '';
+  renderModal();
+  const m = $('#modal'); m.classList.remove('hidden'); m.classList.add('flex');
+  setTimeout(() => $('#mAmount').focus(), 50);
+}
+function closeModal() { const m = $('#modal'); m.classList.add('hidden'); m.classList.remove('flex'); $('#fab').focus(); }
+
+async function saveManual(ev) {
+  ev.preventDefault();
+  const err = $('#mError'); err.classList.add('hidden');
+  const amount = parseFloat(String($('#mAmount').value).replace(/,/g, ''));
+  const fail = m => { err.textContent = m; err.classList.remove('hidden'); };
+  if (!(amount > 0)) return fail('Enter an amount greater than zero.');
+  if (!$('#mDate').value) return fail('Pick a date.');
+  const p = { type: mType, amount, date: $('#mDate').value, message: $('#mNote').value.trim() || 'Manual Entry' };
+  if (mType === 'transfer') {
+    p.from = $('#mFrom').value; p.to = $('#mTo').value; p.notes = $('#mNote').value.trim();
+    if (!p.from || !p.to) return fail('Choose both payment modes.');
+    if (p.from === p.to) return fail('Payment From and Payment To must be different.');
+  } else {
+    p.category = $('#mCat').value; p.subcategory = $('#mSub').value; p.mode = $('#mMode').value;
+    if (!p.category || !p.mode) return fail('Choose a category and a mode.');
+  }
+  const btn = $('#mSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await callApi('add_transaction', p);
+    if (!r.ok) return fail(r.error || 'Could not save.');
+    closeModal(); toast(typeLabel(mType) + ' saved'); addReceipt(r.saved, r.id, r.row, 'manual'); afterSave();
+  } catch (e) { fail(e.message || String(e)); }
+  finally { btn.disabled = false; btn.textContent = 'Save entry'; }
+}
+
+function showTab(which) {
+  const chat = which === 'chat';
+  $('#view-chat').classList.toggle('hidden', !chat); $('#view-dash').classList.toggle('hidden', chat);
+  ['chat', 'dash'].forEach(k => {
+    const b = $('#tab-' + k), on = (k === which);
+    b.setAttribute('aria-selected', on); b.className = 'rounded-full px-4 py-1.5 transition ' + (on ? 'bg-white/10 text-white' : 'text-[var(--muted)] hover:text-white');
+  });
+  if (!chat) loadDashboard(); else scrollDown();
+}
+$('#tab-chat').onclick = () => showTab('chat');
+$('#tab-dash').onclick = () => showTab('dash');
+$('#chatForm').addEventListener('submit', e => { e.preventDefault(); const i = $('#chatInput'); const v = i.value; i.value = ''; handleUser(v); });
+$('#chatLog').addEventListener('click', e => { const c = e.target.closest('[data-chip]'); if (c) handleUser(c.dataset.chip); });
+$('#fab').onclick = openModal; $('#mClose').onclick = closeModal;
+$('#modal').addEventListener('mousedown', e => { if (e.target.id === 'modal') closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#modal').classList.contains('hidden')) closeModal(); });
+$('#mTypes').addEventListener('click', e => { const b = e.target.closest('[data-t]'); if (b) { mType = b.dataset.t; renderModal(); } });
+$('#mCat').onchange = fillSubs; $('#mForm').addEventListener('submit', saveManual);
+$('#fPreset').onchange = () => { applyPreset(); loadDashboard(); };
+['#fFrom', '#fTo'].forEach(s => $(s).onchange = () => { $('#fPreset').value = 'custom'; loadDashboard(); });
+$('#fMode').onchange = loadDashboard;
+$('#btnSync').onclick = async () => {
+  $('#syncIcon').style.transition = 'transform .6s'; $('#syncIcon').style.transform = 'rotate(360deg)';
+  setTimeout(() => { $('#syncIcon').style.transform = ''; }, 650);
+  try { await loadMeta(true); toast('Reloaded from your sheet'); if (!$('#view-dash').classList.contains('hidden')) loadDashboard(); }
+  catch (e) { toast(e.message, 'err'); }
+};
+window.addEventListener('focus', () => { if (META && Date.now() - metaAt > 60000) loadMeta(true).catch(() => {}); });
+
+(async function init() {
+  showTab('chat');
+  showTyping();
+  try { await loadMeta(true); hideTyping(); addBot('Hi, I’m Digital-Money-Purse. Tell me what you spent or earned.' + helpHtml().replace(/^I can log[^.]*\.[^.]*\./, '')); }
+  catch (e) { hideTyping(); addBot('<span class="text-[#ffb3a8]">Could not reach your sheet: ' + esc(e.message || e) + '</span>'); }
+})();
+</script>
+</body>
+</html>
